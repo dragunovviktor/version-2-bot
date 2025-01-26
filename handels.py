@@ -1,75 +1,48 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from Parser import Parser
 
 router = Router()
 
+# Команда /start
 @router.message(F.command("start"))
 async def cmd_start(message: Message):
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Все расписание")],
-            [KeyboardButton(text="Неделя")],
-            [KeyboardButton(text="Другая кнопка")],
-        ],
-        resize_keyboard=True  # Прямоугольные кнопки
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Все расписание", callback_data="full_schedule"),
+                InlineKeyboardButton(text="Неделя", callback_data="week_schedule"),
+            ],
+            [
+                InlineKeyboardButton(text="Следующая неделя", callback_data="next_week"),
+                InlineKeyboardButton(text="Другая кнопка", callback_data="other_button"),
+            ],
+        ]
     )
 
     await message.answer(
-        "Привет! Нажми на кнопку ниже, чтобы получить все расписание или расписание на неделю:",
+        "Привет! Выбери действие ниже:",
         reply_markup=keyboard
     )
 
-# Обработка команды в любом чате
-@router.message(F.text)
-async def handle_message(message: Message):
-    if not message.text:  # Проверка на наличие текста
-        await message.answer("Сообщение не содержит текста.")
-        return
+# Обработчик нажатий на кнопки
+@router.callback_query()
+async def handle_callback(callback: CallbackQuery):
+    action = callback.data
 
-    text = message.text.lower()
-    print(f"Получен текст: {text}")  # Логируем текст
-
-    # Если это группа, то не отвечаем на обычные сообщения
-    if message.chat.type == "group" or message.chat.type == "supergroup":
-        if text not in ["все расписание", "неделя", "другая кнопка"]:
-            return  # Если текст не является командой, не реагируем
-
-    # Если сообщение относится к команде
-    if text == "все расписание":
-        await send_full_schedule(message)
-    elif text == "неделя":
-        await send_schedule_for_week(message)
-    elif text == "другая кнопка":
-        await message.answer("Это сообщение для другой кнопки.")
+    if action == "full_schedule":
+        await send_full_schedule(callback.message)
+    elif action == "week_schedule":
+        await send_schedule_for_week(callback.message)
+    elif action == "next_week":
+        await callback.message.answer("Расписание на следующую неделю пока не добавлено.")
+    elif action == "other_button":
+        await callback.message.answer("Это другая кнопка.")
     else:
-        await message.answer("Я не понимаю эту команду. Выбери кнопку ниже.")
+        await callback.message.answer("Неизвестное действие.")
 
-# Обработчик для личных сообщений
-@router.message(F.chat.type == "private")
-async def private_message_handler(message: Message):
-    """
-    Обработка сообщений из личных чатов.
-    """
-    await handle_message(message)
-
-# Обработчик для сообщений в группах
-@router.message(F.chat.type == "group")
-async def group_message_handler(message: Message):
-    """
-    Обработка сообщений из групп.
-    """
-    # Бот не должен отвечать на сообщения, если они не соответствуют команде
-    text = message.text.lower()
-    if text not in ["все расписание", "неделя", "другая кнопка"]:
-        return  # Не отвечаем на обычные сообщения
-
-    await handle_message(message)
-
+# Отправка полного расписания
 async def send_full_schedule(message: Message):
-    """
-    Отправить все расписание.
-    """
     parser = Parser(Parser.url)
     soup = parser.parse()
 
@@ -95,22 +68,19 @@ async def send_full_schedule(message: Message):
     else:
         await message.answer("Не удалось загрузить расписание. Попробуйте позже.")
 
+# Отправка расписания на неделю
 async def send_schedule_for_week(message: Message):
-    """
-    Отправить последние 7 дней расписания.
-    """
     parser = Parser(Parser.url)
     soup = parser.parse()
 
     if soup:
         full_schedule = parser.extract_schedule(soup)
-        
-        # Собираем все расписание в один список
+
+        # Собираем расписание за последние 7 дней
         all_schedules = []
         for day, schedule in full_schedule.items():
             all_schedules.append((day, schedule))
 
-        # Получаем последние 7 дней
         last_7_days = all_schedules[-7:]
 
         response = "📅 Расписание на последние 7 дней:\n\n"
@@ -131,4 +101,3 @@ async def send_schedule_for_week(message: Message):
             await message.answer(response)
     else:
         await message.answer("Не удалось загрузить расписание. Попробуйте позже.")
-
