@@ -9,7 +9,7 @@ router = Router()
 # Регулярное выражение для поиска даты в формате ДД.ММ.ГГГГ
 DATE_REGEX = r"\b(\d{2}\.\d{2}\.\d{4})\b"
 
-
+# Обработчик команды /start
 @router.message(F.command("start"))
 async def cmd_start(message: Message):
     await message.answer(
@@ -19,26 +19,26 @@ async def cmd_start(message: Message):
         "- Введи дату в формате ДД.ММ.ГГГГ — чтобы получить расписание на конкретный день"
     )
 
-
+# Обработчик текста для команд и даты
 @router.message(F.text)
 async def handle_message(message: Message):
     text = message.text.strip().lower()
 
-    # Если пользователь хочет получить полное расписание
+    # Проверяем, является ли текст командой
     if text == "все расписание":
         await send_full_schedule(message)
 
-    # Если пользователь хочет получить расписание на последнюю неделю
     elif text == "неделя":
         await send_schedule_for_week(message)
 
-    # Если пользователь вводит дату для получения расписания
+    # Проверка на дату в формате ДД.ММ.ГГГГ
     elif re.match(r"\d{2}\.\d{2}\.\d{4}", text):
         await send_schedule_for_date(text, message)
 
     else:
         await message.answer(
-            "Я не понимаю эту команду. Пожалуйста, выбери одну из команд или введи дату в формате ДД.ММ.ГГГГ.")
+            "Я не понимаю эту команду. Пожалуйста, выбери одну из команд или введи дату в формате ДД.ММ.ГГГГ."
+        )
 
 
 async def send_full_schedule(message: Message):
