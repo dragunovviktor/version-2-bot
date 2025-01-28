@@ -22,24 +22,25 @@ async def cmd_start(message: Message):
 # Обработчик текста для команд и даты
 @router.message(F.text)
 async def handle_message(message: Message):
+    # Игнорируем сообщения от бота
+    if message.from_user.is_bot:
+        return
+    
     text = message.text.strip().lower()
 
-    # Проверяем, является ли текст командой
+    # Проверка на дату в формате ДД.ММ.ГГГГ
+    if re.match(r"\d{2}\.\d{2}\.\d{4}", text):
+        await send_schedule_for_date(text, message)
+        return
+
+    # Проверяем, является ли текст одной из допустимых команд
     if text == "все расписание":
         await send_full_schedule(message)
-
     elif text == "неделя":
         await send_schedule_for_week(message)
-
-    # Проверка на дату в формате ДД.ММ.ГГГГ
-    elif re.match(r"\d{2}\.\d{2}\.\d{4}", text):
-        await send_schedule_for_date(text, message)
-
+    # Если текст не является командой или датой, просто игнорируем его.
     else:
-        await message.answer(
-            "Я не понимаю эту команду. Пожалуйста, выбери одну из команд или введи дату в формате ДД.ММ.ГГГГ."
-        )
-
+        return  # Ничего не отправляем и не реагируем
 
 async def send_full_schedule(message: Message):
     """
